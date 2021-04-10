@@ -5,14 +5,15 @@ int hrs = 0;
 int mnts = 0;
 int secs = 0;
 long int hrsAlarm = 10L, mntsAlarm = 23L, secsAlarm = 45L;
+long triggerAlarmVal;
 long int SWcount;
-long int hrsSW= 0L, mntsSW = 0L, secsSW = 0L;
-bool isStopwatchStops;
+long int hrsSW = 0L, mntsSW = 0L, secsSW = 0L;
+int stateSW =41;
 long count = 37415L;
 short int state;
 int buf = 0;
 short int state2 = 0;
-long triggerAlarmVal;
+
 void setup()
 {
 
@@ -49,15 +50,15 @@ ISR(TIMER1_OVF_vect)
 {
   // Timer counter diinsialisasi
   TCNT1 = 49911;
-  if (state == 41)
+  if (stateSW == 41)
   {
     SWcount = 0;
   }
-  if (state == 42 || (state != 43) || (state != 41))
+  if (stateSW == 42 )
   {
     SWcount++;
   }
-  if (state == 43)
+  if (stateSW == 43)
   {
     SWcount = SWcount;
   }
@@ -74,7 +75,7 @@ void loop()
 
   // Triggering apabila waktu sudah berada di rentang alarm
   triggerAlarmVal = (3600 * hrsAlarm + 60 * mntsAlarm + secsAlarm);
-  if ((count > triggerAlarmVal-1) && (count < 20 + triggerAlarmVal))
+  if ((count > triggerAlarmVal - 1) && (count < 20 + triggerAlarmVal) && (count % 2 == 1))
   {
     digitalWrite(A0, HIGH);
   }
@@ -84,8 +85,8 @@ void loop()
   }
 
   detectButton();
-  parseHMS(count,SWcount);
- 
+  parseHMS(count, SWcount);
+
 
 }
 void detectButton()
@@ -115,10 +116,11 @@ void detectButton()
           state = 3;
           state2 = 0;
         }
-        if (state > 40)
-        {
+        if (state > 40) {
           state = 4;
+          state2 =0;
         }
+
       }
       buf = 0;
     }
@@ -162,16 +164,15 @@ void detectButton()
       {
         state2 = 1;
         state = 41;
+        stateSW = state;
       }
-      if (state == 41)
+      if (state > 40 && state < 44)
       {
-        state = 42;
+        stateSW = state;
+        state = state + 1;
+        
       }
-      if (state == 42)
-      {
-        state = 43;
-      }
-      if (state == 43)
+      if (state > 43 && state < 50)
       {
         state = 41;
       }
@@ -193,7 +194,7 @@ void stateHandler()
   if (state == 3)
   {
     printToSevSeg(mntsAlarm / 10, mntsAlarm % 10, hrsAlarm / 10, hrsAlarm % 10, true, true, true, true);
-    
+
   }
   if (state == 4)
   {
@@ -202,29 +203,29 @@ void stateHandler()
   if (state == 31)
   {
     printToSevSeg(hrsAlarm / 10, hrsAlarm % 10, 91, 0, true, true, true, false);
-    
+
   }
   if (state == 32)
   {
     printToSevSeg(mntsAlarm / 10, mntsAlarm % 10, 92, 92, true, true, true, true);
-    
+
   }
   if (state == 33)
   {
     printToSevSeg(secsAlarm / 10, secsAlarm % 10, 5, 0, true, true, true, false);
-    
+
   }
   if (state == 41)
   {
-    printToSevSeg(hrsAlarm / 10, hrsAlarm % 10, 91, 0, true, true, true, false);
+    printToSevSeg(mntsSW / 10, mntsSW % 10, secsSW / 10, secsSW % 10, true, true, true, true);
   }
   if (state == 42)
   {
-    printToSevSeg(mntsAlarm / 10, mntsAlarm % 10, 92, 92, true, true, true, true);
+    printToSevSeg(mntsSW / 10, mntsSW % 10, secsSW / 10, secsSW % 10, true, true, true, true);
   }
   if (state == 43)
   {
-    printToSevSeg(secsAlarm / 10, secsAlarm % 10, 5, 0, true, true, true, false);
+    printToSevSeg(mntsSW / 10, mntsSW % 10, secsSW / 10, secsSW % 10, true, true, true, true);
   }
 }
 
@@ -240,7 +241,7 @@ void parseHMS(long clock_rn, long SW_clock)
 
   secs = clock_rn % 60L;
 
-// Parsing digit count stopwatch menjadi jam:menit:detik
+  // Parsing digit count stopwatch menjadi jam:menit:detik
   hrsSW = SW_clock / 3600L;
   SW_clock = SW_clock % 3600L;
 
@@ -249,7 +250,7 @@ void parseHMS(long clock_rn, long SW_clock)
 
   secsSW = SW_clock % 60L;
 
-    // Mencetak ke Seven Segments
+  // Mencetak ke Seven Segments
   stateHandler();
 }
 
@@ -282,14 +283,14 @@ void printToSevSeg(int d1, int d2, int d3, int d4, bool s1, bool s2, bool s3, bo
     delay(2);
     digitalWrite(5, HIGH);
   }
-  if((count%2 == 1) && (state != 3) && (state/3 != 10)){
-    digitalWrite(10,LOW);
+  if ((count % 2 == 1) && (state != 3) && (state / 3 != 10)) {
+    digitalWrite(10, LOW);
   }
-  if(count%2 == 0 && (state != 3) && (state/3 != 10)){
-    digitalWrite(10,HIGH);
+  if (count % 2 == 0 && (state != 3) && (state / 3 != 10)) {
+    digitalWrite(10, HIGH);
   }
-  if(state == 3){
-    digitalWrite(10,HIGH);
+  if (state == 3) {
+    digitalWrite(10, HIGH);
   }
 
   // Menyalakan (Transistor Vbase LOW) digit 2 , cetak bentuk digit digit2/d2
@@ -320,116 +321,116 @@ void printNum(int dig)
 {
   switch (dig)
   {
-  case 0:
-    digitalWrite(3, HIGH);
-    digitalWrite(2, HIGH);
-    digitalWrite(6, HIGH);
-    digitalWrite(9, HIGH);
-    digitalWrite(11, HIGH);
-    digitalWrite(12, HIGH);
-    digitalWrite(8, LOW);
-    break;
-  case 1:
-    digitalWrite(3, LOW);
-    digitalWrite(2, LOW);
-    digitalWrite(6, HIGH);
-    digitalWrite(9, HIGH);
-    digitalWrite(11, LOW);
-    digitalWrite(12, LOW);
-    digitalWrite(8, LOW);
-    break;
-  case 2:
-    digitalWrite(3, LOW);
-    digitalWrite(2, HIGH);
-    digitalWrite(6, HIGH);
-    digitalWrite(9, LOW);
-    digitalWrite(11, HIGH);
-    digitalWrite(12, HIGH);
-    digitalWrite(8, HIGH);
-    break;
-  case 3:
-    digitalWrite(3, LOW);
-    digitalWrite(2, HIGH);
-    digitalWrite(6, HIGH);
-    digitalWrite(9, HIGH);
-    digitalWrite(11, HIGH);
-    digitalWrite(12, LOW);
-    digitalWrite(8, HIGH);
-    break;
+    case 0:
+      digitalWrite(3, HIGH);
+      digitalWrite(2, HIGH);
+      digitalWrite(6, HIGH);
+      digitalWrite(9, HIGH);
+      digitalWrite(11, HIGH);
+      digitalWrite(12, HIGH);
+      digitalWrite(8, LOW);
+      break;
+    case 1:
+      digitalWrite(3, LOW);
+      digitalWrite(2, LOW);
+      digitalWrite(6, HIGH);
+      digitalWrite(9, HIGH);
+      digitalWrite(11, LOW);
+      digitalWrite(12, LOW);
+      digitalWrite(8, LOW);
+      break;
+    case 2:
+      digitalWrite(3, LOW);
+      digitalWrite(2, HIGH);
+      digitalWrite(6, HIGH);
+      digitalWrite(9, LOW);
+      digitalWrite(11, HIGH);
+      digitalWrite(12, HIGH);
+      digitalWrite(8, HIGH);
+      break;
+    case 3:
+      digitalWrite(3, LOW);
+      digitalWrite(2, HIGH);
+      digitalWrite(6, HIGH);
+      digitalWrite(9, HIGH);
+      digitalWrite(11, HIGH);
+      digitalWrite(12, LOW);
+      digitalWrite(8, HIGH);
+      break;
 
-  case 4:
-    digitalWrite(3, HIGH);
-    digitalWrite(2, LOW);
-    digitalWrite(6, HIGH);
-    digitalWrite(9, HIGH);
-    digitalWrite(11, LOW);
-    digitalWrite(12, LOW);
-    digitalWrite(8, HIGH);
-    break;
-  case 5:
-    digitalWrite(3, HIGH);
-    digitalWrite(2, HIGH);
-    digitalWrite(6, LOW);
-    digitalWrite(9, HIGH);
-    digitalWrite(11, HIGH);
-    digitalWrite(12, LOW);
-    digitalWrite(8, HIGH);
-    break;
-  case 6:
-    digitalWrite(3, HIGH);
-    digitalWrite(2, HIGH);
-    digitalWrite(6, LOW);
-    digitalWrite(9, HIGH);
-    digitalWrite(11, HIGH);
-    digitalWrite(12, HIGH);
-    digitalWrite(8, HIGH);
-    break;
-  case 7:
-    digitalWrite(3, LOW);
-    digitalWrite(2, HIGH);
-    digitalWrite(6, HIGH);
-    digitalWrite(9, HIGH);
-    digitalWrite(11, LOW);
-    digitalWrite(12, LOW);
-    digitalWrite(8, LOW);
-    break;
-  case 8:
-    digitalWrite(3, HIGH);
-    digitalWrite(2, HIGH);
-    digitalWrite(6, HIGH);
-    digitalWrite(9, HIGH);
-    digitalWrite(11, HIGH);
-    digitalWrite(12, HIGH);
-    digitalWrite(8, HIGH);
-    break;
-  case 9:
-    digitalWrite(3, HIGH);
-    digitalWrite(2, HIGH);
-    digitalWrite(6, HIGH);
-    digitalWrite(9, HIGH);
-    digitalWrite(11, HIGH);
-    digitalWrite(12, LOW);
-    digitalWrite(8, HIGH);
-    break;
-  // HURUF H
-  case 91:
-    digitalWrite(3, HIGH);
-    digitalWrite(2, LOW);
-    digitalWrite(6, HIGH);
-    digitalWrite(9, HIGH);
-    digitalWrite(11, LOW);
-    digitalWrite(12, HIGH);
-    digitalWrite(8, HIGH);
-    break;
-  // HURUF M
-  case 92:
-    digitalWrite(3, HIGH);
-    digitalWrite(2, HIGH);
-    digitalWrite(6, HIGH);
-    digitalWrite(9, HIGH);
-    digitalWrite(11, LOW);
-    digitalWrite(12, HIGH);
-    digitalWrite(8, LOW);
-    break;
+    case 4:
+      digitalWrite(3, HIGH);
+      digitalWrite(2, LOW);
+      digitalWrite(6, HIGH);
+      digitalWrite(9, HIGH);
+      digitalWrite(11, LOW);
+      digitalWrite(12, LOW);
+      digitalWrite(8, HIGH);
+      break;
+    case 5:
+      digitalWrite(3, HIGH);
+      digitalWrite(2, HIGH);
+      digitalWrite(6, LOW);
+      digitalWrite(9, HIGH);
+      digitalWrite(11, HIGH);
+      digitalWrite(12, LOW);
+      digitalWrite(8, HIGH);
+      break;
+    case 6:
+      digitalWrite(3, HIGH);
+      digitalWrite(2, HIGH);
+      digitalWrite(6, LOW);
+      digitalWrite(9, HIGH);
+      digitalWrite(11, HIGH);
+      digitalWrite(12, HIGH);
+      digitalWrite(8, HIGH);
+      break;
+    case 7:
+      digitalWrite(3, LOW);
+      digitalWrite(2, HIGH);
+      digitalWrite(6, HIGH);
+      digitalWrite(9, HIGH);
+      digitalWrite(11, LOW);
+      digitalWrite(12, LOW);
+      digitalWrite(8, LOW);
+      break;
+    case 8:
+      digitalWrite(3, HIGH);
+      digitalWrite(2, HIGH);
+      digitalWrite(6, HIGH);
+      digitalWrite(9, HIGH);
+      digitalWrite(11, HIGH);
+      digitalWrite(12, HIGH);
+      digitalWrite(8, HIGH);
+      break;
+    case 9:
+      digitalWrite(3, HIGH);
+      digitalWrite(2, HIGH);
+      digitalWrite(6, HIGH);
+      digitalWrite(9, HIGH);
+      digitalWrite(11, HIGH);
+      digitalWrite(12, LOW);
+      digitalWrite(8, HIGH);
+      break;
+    // HURUF H
+    case 91:
+      digitalWrite(3, HIGH);
+      digitalWrite(2, LOW);
+      digitalWrite(6, HIGH);
+      digitalWrite(9, HIGH);
+      digitalWrite(11, LOW);
+      digitalWrite(12, HIGH);
+      digitalWrite(8, HIGH);
+      break;
+    // HURUF M
+    case 92:
+      digitalWrite(3, HIGH);
+      digitalWrite(2, HIGH);
+      digitalWrite(6, HIGH);
+      digitalWrite(9, HIGH);
+      digitalWrite(11, LOW);
+      digitalWrite(12, HIGH);
+      digitalWrite(8, LOW);
+      break;
   }
 }
