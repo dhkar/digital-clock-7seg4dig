@@ -1,17 +1,30 @@
 #define setButton 13
 #define modeButton 0
 #define btnDebounceThreshold 50
+
+// Inisiasi Tipe Variabel
+// Tipe Data Clock
+long count = 37415L;
 int hrs = 0;
 int mnts = 0;
 int secs = 0;
+
+// Tipe Data Alarm
 long int hrsAlarm = 10L, mntsAlarm = 23L, secsAlarm = 45L;
 long triggerAlarmVal;
+
+// Tipe Data Stopwatch
 long int SWcount;
 long int hrsSW = 0L, mntsSW = 0L, secsSW = 0L;
 int stateSW = 41;
-long count = 37415L;
-short int state;
+
+// Tipe Data Debouncing Button
 int buf = 0;
+
+// State Layer Pertama
+short int state;
+
+// State Layer kedua
 short int state2 = 0;
 
 void setup()
@@ -22,14 +35,21 @@ void setup()
   {
     pinMode(i, OUTPUT);
   }
+
+  // Output untuk indikasi adanya Alarm
   pinMode(A0, OUTPUT);
+
+  // Output untuk indikasi mode/state
   pinMode(A1, OUTPUT);
   pinMode(A2, OUTPUT);
-  pinMode(0, INPUT);
-  pinMode(13, INPUT);
+
+  // Pushbutton Setting sebagai Input Digital
+  pinMode(modeButton, INPUT);
+  pinMode(setButton, INPUT);
 
   // Inisialisasi State
   state = 1;
+
   // Mematikan interrupt
   noInterrupts();
 
@@ -46,30 +66,38 @@ void setup()
   TCCR1B = 0b00001101;
   // Enable Timer1;
   TIMSK1 = 0b00000001;
+
+  // Nyalakan Interrupt
   interrupts();
 }
 ISR(TIMER1_OVF_vect)
 {
   // Timer counter diinsialisasi
   TCNT1 = 49911;
-  if (stateSW == 41)
+
+  // Hanya state 42 yang menambah counter stopwatch
+  // state 41 adalah reset stopwatch, state 43 stop stopwatch
+  switch (stateSW)
   {
+  case 41:
     SWcount = 0;
-  }
-  if (stateSW == 42 )
-  {
+    break;
+  case 42:
     SWcount++;
-  }
-  if (stateSW == 43)
-  {
+    break;
+  case 43:
     SWcount = SWcount;
+    break;
   }
-  // Setiap detik akan menaikkan nilai count untuk ditampilkan SevSeg
+
+  // Setiap detik akan increment count sebanyak 1
+  // count merupakan jumlah detik dari clock
   count++;
 }
 void loop()
 {
-  // Menjaga batas nilai counter hingga 86399, selebihnya kembali ke 0
+  // Menjaga batas nilai detik (count) dalam sehari hingga 86399 (23:59:59)
+  // Setelah itu, kembali ke 0 atau (00:00:00)
   if (count > 86399)
   {
     count = 0;
@@ -86,11 +114,15 @@ void loop()
     digitalWrite(A0, LOW);
   }
 
+  // State Dynamizer, dengan adanya trigger dari button
   detectButton();
+
+  // Parsing data detik (count untuk clock, countSW untuk stopwatch)
+  // menjadi data jam:menit:detik
   parseHMS(count, SWcount);
-
-
 }
+
+// Prosedur detectButton() untuk mendinamisasi state
 void detectButton()
 {
   if (digitalRead(modeButton) == 0)
@@ -118,11 +150,11 @@ void detectButton()
           state = 3;
           state2 = 0;
         }
-        if (state > 40) {
+        if (state > 40)
+        {
           state = 4;
           state2 = 0;
         }
-
       }
       buf = 0;
     }
@@ -172,7 +204,6 @@ void detectButton()
       {
         stateSW = state;
         state = state + 1;
-
       }
       if (state > 43 && state < 50)
       {
@@ -183,6 +214,9 @@ void detectButton()
     }
   }
 }
+
+// Output Logic Dari State tertentu. stateHandler akan memeriksa state
+// dan mengeluarkan output display kepada seven segments
 void stateHandler()
 {
   if (state == 1)
@@ -272,17 +306,13 @@ void parseHMS(long clock_rn, long SW_clock)
   stateHandler();
 }
 
+// PrintToSevSeg memiliki parameter 4 digit yang akan dicetak (d1-d4)
+// dan digit mana saja yg ingin dinyalakan berupa boolean s1-s4
 void printToSevSeg(int d1, int d2, int d3, int d4, bool s1, bool s2, bool s3, bool s4)
 {
-  // Semua delay 2ms agar terlihat efek simultan pada 7seg
-  // Transistor Vbase HIGH agar mematikan semua digit 7seg
-  //  digitalWrite(5, s1);
-  //  digitalWrite(7, s2);
-  //  digitalWrite(1, s3);
-  //  digitalWrite(4, s4);
 
-  // Menyalakan (Transistor Vbase LOW) digit 1 , cetak bentuk digit digit1/d1
-  // sesuai dengan bentuk datasheet menggunakan printNum() sebagai BCD
+  // Menyalakan digit 2 (Transistor Vbase LOW, karena Common Cathode)
+  // Cetak angka d2 dengan printNum() sebagai "Binary Coded Decimal/BCD"
   if (s2)
   {
     digitalWrite(7, LOW);
@@ -292,8 +322,8 @@ void printToSevSeg(int d1, int d2, int d3, int d4, bool s1, bool s2, bool s3, bo
     digitalWrite(10, LOW);
   }
 
-  // Menyalakan (Transistor Vbase LOW) digit 1 , cetak bentuk digit digit1/d1
-  // sesuai dengan bentuk datasheet menggunakan printNum() sebagai BCD
+  // Menyalakan digit 1 (Transistor Vbase LOW, karena Common Cathode)
+  // Cetak angka d1 dengan printNum() sebagai "Binary Coded Decimal/BCD"
   if (s1)
   {
     digitalWrite(5, LOW);
@@ -301,24 +331,30 @@ void printToSevSeg(int d1, int d2, int d3, int d4, bool s1, bool s2, bool s3, bo
     delay(2);
     digitalWrite(5, HIGH);
   }
-  if ((count % 2 == 1) && (state != 3) && (state / 3 != 10)) {
+  // Mencetak Colon Untuk Estetika, sesuai dengan state yang ada
+  // Colon merupakan titik 2 pada  7 seg yang biasa berkedip saat clock berjalan
+  if ((count % 2 == 1) && (state != 3) && (state / 3 != 10))
+  {
     digitalWrite(10, LOW);
   }
-  if (count % 2 == 0 && (state != 3) && (state / 3 != 10)) {
+  if (count % 2 == 0 && (state != 3) && (state / 3 != 10))
+  {
     digitalWrite(10, HIGH);
   }
-  if (state == 3) {
+  if (state == 3)
+  {
     digitalWrite(10, HIGH);
   }
-  if (SWcount % 2 == 1 && state > 40 ) {
+  if (SWcount % 2 == 1 && state > 40)
+  {
     digitalWrite(10, LOW);
   }
-  if ((SWcount % 2 == 0 && state > 40) || (state == 4)) {
+  if ((SWcount % 2 == 0 && state > 40) || (state == 4))
+  {
     digitalWrite(10, HIGH);
   }
-
-  // Menyalakan (Transistor Vbase LOW) digit 2 , cetak bentuk digit digit2/d2
-  // sesuai dengan bentuk datasheet menggunakan printNum sebagai BCD
+  // Menyalakan digit 4 (Transistor Vbase LOW, karena Common Cathode)
+  // Cetak angka d4 dengan printNum() sebagai "Binary Coded Decimal/BCD"
   if (s4)
   {
     digitalWrite(4, LOW);
@@ -328,8 +364,8 @@ void printToSevSeg(int d1, int d2, int d3, int d4, bool s1, bool s2, bool s3, bo
     digitalWrite(10, LOW);
   }
 
-  // Menyalakan (Transistor Vbase LOW) digit 3 , cetak bentuk digit digit3/d3
-  // sesuai dengan bentuk datasheet menggunakan printNum sebagai BCD
+  // Menyalakan digit 3 (Transistor Vbase LOW, karena Common Cathode)
+  // Cetak angka d3 dengan printNum() sebagai "Binary Coded Decimal/BCD"
   if (s3)
   {
     digitalWrite(1, LOW);
@@ -338,123 +374,126 @@ void printToSevSeg(int d1, int d2, int d3, int d4, bool s1, bool s2, bool s3, bo
     digitalWrite(1, HIGH);
     digitalWrite(10, LOW);
   }
+
+
 }
 
-// Fungsi printNum sebagai BCD
+// Fungsi printNum sebagai BCD. Dibuat sendiri dengan memerika satu persatu
+// port segment a-g dan port Vbase transistor untuk menyalakan digit
 void printNum(int dig)
 {
   switch (dig)
   {
-    case 0:
-      digitalWrite(3, HIGH);
-      digitalWrite(2, HIGH);
-      digitalWrite(6, HIGH);
-      digitalWrite(9, HIGH);
-      digitalWrite(11, HIGH);
-      digitalWrite(12, HIGH);
-      digitalWrite(8, LOW);
-      break;
-    case 1:
-      digitalWrite(3, LOW);
-      digitalWrite(2, LOW);
-      digitalWrite(6, HIGH);
-      digitalWrite(9, HIGH);
-      digitalWrite(11, LOW);
-      digitalWrite(12, LOW);
-      digitalWrite(8, LOW);
-      break;
-    case 2:
-      digitalWrite(3, LOW);
-      digitalWrite(2, HIGH);
-      digitalWrite(6, HIGH);
-      digitalWrite(9, LOW);
-      digitalWrite(11, HIGH);
-      digitalWrite(12, HIGH);
-      digitalWrite(8, HIGH);
-      break;
-    case 3:
-      digitalWrite(3, LOW);
-      digitalWrite(2, HIGH);
-      digitalWrite(6, HIGH);
-      digitalWrite(9, HIGH);
-      digitalWrite(11, HIGH);
-      digitalWrite(12, LOW);
-      digitalWrite(8, HIGH);
-      break;
+  case 0:
+    digitalWrite(3, HIGH);
+    digitalWrite(2, HIGH);
+    digitalWrite(6, HIGH);
+    digitalWrite(9, HIGH);
+    digitalWrite(11, HIGH);
+    digitalWrite(12, HIGH);
+    digitalWrite(8, LOW);
+    break;
+  case 1:
+    digitalWrite(3, LOW);
+    digitalWrite(2, LOW);
+    digitalWrite(6, HIGH);
+    digitalWrite(9, HIGH);
+    digitalWrite(11, LOW);
+    digitalWrite(12, LOW);
+    digitalWrite(8, LOW);
+    break;
+  case 2:
+    digitalWrite(3, LOW);
+    digitalWrite(2, HIGH);
+    digitalWrite(6, HIGH);
+    digitalWrite(9, LOW);
+    digitalWrite(11, HIGH);
+    digitalWrite(12, HIGH);
+    digitalWrite(8, HIGH);
+    break;
+  case 3:
+    digitalWrite(3, LOW);
+    digitalWrite(2, HIGH);
+    digitalWrite(6, HIGH);
+    digitalWrite(9, HIGH);
+    digitalWrite(11, HIGH);
+    digitalWrite(12, LOW);
+    digitalWrite(8, HIGH);
+    break;
 
-    case 4:
-      digitalWrite(3, HIGH);
-      digitalWrite(2, LOW);
-      digitalWrite(6, HIGH);
-      digitalWrite(9, HIGH);
-      digitalWrite(11, LOW);
-      digitalWrite(12, LOW);
-      digitalWrite(8, HIGH);
-      break;
-    case 5:
-      digitalWrite(3, HIGH);
-      digitalWrite(2, HIGH);
-      digitalWrite(6, LOW);
-      digitalWrite(9, HIGH);
-      digitalWrite(11, HIGH);
-      digitalWrite(12, LOW);
-      digitalWrite(8, HIGH);
-      break;
-    case 6:
-      digitalWrite(3, HIGH);
-      digitalWrite(2, HIGH);
-      digitalWrite(6, LOW);
-      digitalWrite(9, HIGH);
-      digitalWrite(11, HIGH);
-      digitalWrite(12, HIGH);
-      digitalWrite(8, HIGH);
-      break;
-    case 7:
-      digitalWrite(3, LOW);
-      digitalWrite(2, HIGH);
-      digitalWrite(6, HIGH);
-      digitalWrite(9, HIGH);
-      digitalWrite(11, LOW);
-      digitalWrite(12, LOW);
-      digitalWrite(8, LOW);
-      break;
-    case 8:
-      digitalWrite(3, HIGH);
-      digitalWrite(2, HIGH);
-      digitalWrite(6, HIGH);
-      digitalWrite(9, HIGH);
-      digitalWrite(11, HIGH);
-      digitalWrite(12, HIGH);
-      digitalWrite(8, HIGH);
-      break;
-    case 9:
-      digitalWrite(3, HIGH);
-      digitalWrite(2, HIGH);
-      digitalWrite(6, HIGH);
-      digitalWrite(9, HIGH);
-      digitalWrite(11, HIGH);
-      digitalWrite(12, LOW);
-      digitalWrite(8, HIGH);
-      break;
-    // HURUF H
-    case 91:
-      digitalWrite(3, HIGH);
-      digitalWrite(2, LOW);
-      digitalWrite(6, HIGH);
-      digitalWrite(9, HIGH);
-      digitalWrite(11, LOW);
-      digitalWrite(12, HIGH);
-      digitalWrite(8, HIGH);
-      break;
-    // HURUF M
-    case 92:
-      digitalWrite(3, HIGH);
-      digitalWrite(2, HIGH);
-      digitalWrite(6, HIGH);
-      digitalWrite(9, HIGH);
-      digitalWrite(11, LOW);
-      digitalWrite(12, HIGH);
-      digitalWrite(8, LOW);
-      break;
+  case 4:
+    digitalWrite(3, HIGH);
+    digitalWrite(2, LOW);
+    digitalWrite(6, HIGH);
+    digitalWrite(9, HIGH);
+    digitalWrite(11, LOW);
+    digitalWrite(12, LOW);
+    digitalWrite(8, HIGH);
+    break;
+  case 5:
+    digitalWrite(3, HIGH);
+    digitalWrite(2, HIGH);
+    digitalWrite(6, LOW);
+    digitalWrite(9, HIGH);
+    digitalWrite(11, HIGH);
+    digitalWrite(12, LOW);
+    digitalWrite(8, HIGH);
+    break;
+  case 6:
+    digitalWrite(3, HIGH);
+    digitalWrite(2, HIGH);
+    digitalWrite(6, LOW);
+    digitalWrite(9, HIGH);
+    digitalWrite(11, HIGH);
+    digitalWrite(12, HIGH);
+    digitalWrite(8, HIGH);
+    break;
+  case 7:
+    digitalWrite(3, LOW);
+    digitalWrite(2, HIGH);
+    digitalWrite(6, HIGH);
+    digitalWrite(9, HIGH);
+    digitalWrite(11, LOW);
+    digitalWrite(12, LOW);
+    digitalWrite(8, LOW);
+    break;
+  case 8:
+    digitalWrite(3, HIGH);
+    digitalWrite(2, HIGH);
+    digitalWrite(6, HIGH);
+    digitalWrite(9, HIGH);
+    digitalWrite(11, HIGH);
+    digitalWrite(12, HIGH);
+    digitalWrite(8, HIGH);
+    break;
+  case 9:
+    digitalWrite(3, HIGH);
+    digitalWrite(2, HIGH);
+    digitalWrite(6, HIGH);
+    digitalWrite(9, HIGH);
+    digitalWrite(11, HIGH);
+    digitalWrite(12, LOW);
+    digitalWrite(8, HIGH);
+    break;
+  // HURUF H
+  case 91:
+    digitalWrite(3, HIGH);
+    digitalWrite(2, LOW);
+    digitalWrite(6, HIGH);
+    digitalWrite(9, HIGH);
+    digitalWrite(11, LOW);
+    digitalWrite(12, HIGH);
+    digitalWrite(8, HIGH);
+    break;
+  // HURUF M
+  case 92:
+    digitalWrite(3, HIGH);
+    digitalWrite(2, HIGH);
+    digitalWrite(6, HIGH);
+    digitalWrite(9, HIGH);
+    digitalWrite(11, LOW);
+    digitalWrite(12, HIGH);
+    digitalWrite(8, LOW);
+    break;
   }
 }
