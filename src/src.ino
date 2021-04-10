@@ -3,14 +3,18 @@
 #define btnDebounceThreshold 50
 
 // Inisiasi Tipe Variabel
-// Tipe Data Clock
-long count = 37415L;
+// Tipe Data Clock, Inisiasi jam mulai pukul 10:10:00
+long count = 36600L;
+
 int hrs = 0;
+long hrsBuf = 0;
 int mnts = 0;
+long mntsBuf = 0;
 int secs = 0;
+long secsBuf = 0;
 
 // Tipe Data Alarm
-long int hrsAlarm = 10L, mntsAlarm = 23L, secsAlarm = 45L;
+long int hrsAlarm = 0L, mntsAlarm = 0L, secsAlarm = 0L;
 long triggerAlarmVal;
 
 // Tipe Data Stopwatch
@@ -141,6 +145,7 @@ void detectButton()
       if (state2 > 0)
       {
         state2 = 1;
+        // State Layer 2 Alarm
         if (state > 30 && state < 34)
         {
           state = state + 1;
@@ -150,6 +155,31 @@ void detectButton()
           state = 3;
           state2 = 0;
         }
+
+        // State Layer 2 MenitDetik
+        if (state > 10 && state < 13)
+        {
+          state = state + 1;
+        }
+        if (state > 12 && state < 20)
+        {
+          state = 1;
+          state2 = 0;
+        }
+
+        // State Layer 2 Jam
+        if (state > 20 && state < 22)
+        {
+          state = state + 1;
+        }
+        if (state > 21 && state < 30)
+        {
+          state = 2;
+          state2 = 0;
+        }
+
+        // Kembali ke state layer 1 ketika stopwatch
+        // ditekan tombol mode
         if (state > 40)
         {
           state = 4;
@@ -164,6 +194,7 @@ void detectButton()
     buf = buf + 1;
     if (buf > btnDebounceThreshold)
     {
+      // State Layer 2 untuk setting Alarm
       if ((state == 3) && (state2 == 0))
       {
         state2 = 1;
@@ -192,6 +223,47 @@ void detectButton()
         {
           secsAlarm = 0;
         }
+      }
+
+      // State Layer 2 untuk setting menitdetik
+      if ((state == 1) && (state2 == 0))
+      {
+        state2 = 1;
+        state = 11;
+      }
+      if (state == 11)
+      {
+        mntsBuf++;
+        if (mntsBuf > 59)
+        {
+          mntsBuf = 0;
+        }
+        count = hrsBuf * 3600 + mntsBuf * 60 + secsBuf;
+      }
+      if (state == 12)
+      {
+        secsBuf++;
+        if (secsBuf > 59)
+        {
+          secsBuf = 0;
+        }
+        count = hrsBuf * 3600 + mntsBuf * 60 + secsBuf;
+      }
+
+      // State Layer 2 untuk mengubah jam
+      if ((state == 2) && (state2 == 0))
+      {
+        state2 = 1;
+        state = 21;
+      }
+      if (state == 21)
+      {
+        hrsBuf++;
+        if (hrsBuf > 23)
+        {
+          hrsBuf = 0;
+        }
+        count = hrsBuf * 3600 + mntsBuf * 60 + secsBuf;
       }
 
       if ((state == 4) && (state2 == 0))
@@ -243,6 +315,26 @@ void stateHandler()
     digitalWrite(A1, HIGH);
     digitalWrite(A2, HIGH);
   }
+
+  if (state == 21)
+  {
+    printToSevSeg(hrsBuf / 10, hrsBuf % 10, 91, 0, true, true, true, false);
+    digitalWrite(A1, LOW);
+    digitalWrite(A2, HIGH);
+  }
+  if (state == 11)
+  {
+    printToSevSeg(mntsBuf / 10, mntsBuf % 10, 92, 92, true, true, true, true);
+    digitalWrite(A1, LOW);
+    digitalWrite(A2, LOW);
+  }
+  if (state == 12)
+  {
+    printToSevSeg(secsBuf / 10, secsBuf % 10, 5, 0, true, true, true, false);
+    digitalWrite(A1, LOW);
+    digitalWrite(A2, LOW);
+  }
+
   if (state == 31)
   {
     printToSevSeg(hrsAlarm / 10, hrsAlarm % 10, 91, 0, true, true, true, false);
@@ -374,8 +466,6 @@ void printToSevSeg(int d1, int d2, int d3, int d4, bool s1, bool s2, bool s3, bo
     digitalWrite(1, HIGH);
     digitalWrite(10, LOW);
   }
-
-
 }
 
 // Fungsi printNum sebagai BCD. Dibuat sendiri dengan memerika satu persatu
