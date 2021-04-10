@@ -8,7 +8,7 @@ long int hrsAlarm = 10L, mntsAlarm = 23L, secsAlarm = 45L;
 long triggerAlarmVal;
 long int SWcount;
 long int hrsSW = 0L, mntsSW = 0L, secsSW = 0L;
-int stateSW =41;
+int stateSW = 41;
 long count = 37415L;
 short int state;
 int buf = 0;
@@ -23,6 +23,8 @@ void setup()
     pinMode(i, OUTPUT);
   }
   pinMode(A0, OUTPUT);
+  pinMode(A1, OUTPUT);
+  pinMode(A2, OUTPUT);
   pinMode(0, INPUT);
   pinMode(13, INPUT);
 
@@ -118,7 +120,7 @@ void detectButton()
         }
         if (state > 40) {
           state = 4;
-          state2 =0;
+          state2 = 0;
         }
 
       }
@@ -170,7 +172,7 @@ void detectButton()
       {
         stateSW = state;
         state = state + 1;
-        
+
       }
       if (state > 43 && state < 50)
       {
@@ -186,46 +188,62 @@ void stateHandler()
   if (state == 1)
   {
     printToSevSeg(mnts / 10, mnts % 10, secs / 10, secs % 10, true, true, true, true);
+    digitalWrite(A1, LOW);
+    digitalWrite(A2, LOW);
   }
   if (state == 2)
   {
     printToSevSeg(0, 0, hrs / 10, hrs % 10, false, false, true, true);
+    digitalWrite(A1, LOW);
+    digitalWrite(A2, HIGH);
   }
   if (state == 3)
   {
     printToSevSeg(mntsAlarm / 10, mntsAlarm % 10, hrsAlarm / 10, hrsAlarm % 10, true, true, true, true);
-
+    digitalWrite(A1, HIGH);
+    digitalWrite(A2, LOW);
   }
   if (state == 4)
   {
     printToSevSeg(mntsSW / 10, mntsSW % 10, secsSW / 10, secsSW % 10, true, true, true, true);
+    digitalWrite(A1, HIGH);
+    digitalWrite(A2, HIGH);
   }
   if (state == 31)
   {
     printToSevSeg(hrsAlarm / 10, hrsAlarm % 10, 91, 0, true, true, true, false);
-
+    digitalWrite(A1, HIGH);
+    digitalWrite(A2, LOW);
   }
   if (state == 32)
   {
     printToSevSeg(mntsAlarm / 10, mntsAlarm % 10, 92, 92, true, true, true, true);
-
+    digitalWrite(A1, HIGH);
+    digitalWrite(A2, LOW);
   }
   if (state == 33)
   {
     printToSevSeg(secsAlarm / 10, secsAlarm % 10, 5, 0, true, true, true, false);
-
+    digitalWrite(A1, HIGH);
+    digitalWrite(A2, LOW);
   }
   if (state == 41)
   {
     printToSevSeg(mntsSW / 10, mntsSW % 10, secsSW / 10, secsSW % 10, true, true, true, true);
+    digitalWrite(A1, HIGH);
+    digitalWrite(A2, HIGH);
   }
   if (state == 42)
   {
     printToSevSeg(mntsSW / 10, mntsSW % 10, secsSW / 10, secsSW % 10, true, true, true, true);
+    digitalWrite(A1, HIGH);
+    digitalWrite(A2, HIGH);
   }
   if (state == 43)
   {
     printToSevSeg(mntsSW / 10, mntsSW % 10, secsSW / 10, secsSW % 10, true, true, true, true);
+    digitalWrite(A1, HIGH);
+    digitalWrite(A2, HIGH);
   }
 }
 
@@ -290,6 +308,12 @@ void printToSevSeg(int d1, int d2, int d3, int d4, bool s1, bool s2, bool s3, bo
     digitalWrite(10, HIGH);
   }
   if (state == 3) {
+    digitalWrite(10, HIGH);
+  }
+  if (SWcount % 2 == 1 && state > 40 ) {
+    digitalWrite(10, LOW);
+  }
+  if ((SWcount % 2 == 0 && state > 40) || (state == 4)) {
     digitalWrite(10, HIGH);
   }
 
