@@ -107,17 +107,7 @@ void loop()
     count = 0;
   }
 
-  // Triggering apabila waktu sudah berada di rentang alarm
-  triggerAlarmVal = (3600 * hrsAlarm + 60 * mntsAlarm + secsAlarm);
-  if ((count > triggerAlarmVal - 1) && (count < 20 + triggerAlarmVal) && (count % 2 == 1))
-  {
-    digitalWrite(A0, HIGH);
-  }
-  else
-  {
-    digitalWrite(A0, LOW);
-  }
-
+  detectAlarm(30);
   // State Dynamizer, dengan adanya trigger dari button
   detectButton();
 
@@ -126,6 +116,19 @@ void loop()
   parseHMS(count, SWcount);
 }
 
+void detectAlarm(long int alarmTime)
+{
+  // Triggering apabila waktu sudah berada di rentang alarm
+  triggerAlarmVal = (3600 * hrsAlarm + 60 * mntsAlarm + secsAlarm);
+  if ((count > triggerAlarmVal - 1) && (count < alarmTime + triggerAlarmVal) && (count % 2 == 1))
+  {
+    digitalWrite(A0, HIGH);
+  }
+  else
+  {
+    digitalWrite(A0, LOW);
+  }
+}
 // Prosedur detectButton() untuk mendinamisasi state
 void detectButton()
 {
@@ -437,7 +440,7 @@ void printToSevSeg(int d1, int d2, int d3, int d4, bool s1, bool s2, bool s3, bo
   {
     digitalWrite(10, HIGH);
   }
-  if (SWcount % 2 == 1 && state > 40)
+  if ((SWcount % 2 == 1 && state > 40) || (state == 4))
   {
     digitalWrite(10, LOW);
   }
