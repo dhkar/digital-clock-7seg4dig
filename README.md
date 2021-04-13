@@ -1,5 +1,5 @@
 # Digital Clock - 7 Segments, 4 Digits
-3rd Assignment of EL3014 Microprocessor Systems, digital clock implementation source code and another files
+3rd Assignment of EL3014 Microprocessor Systems, digital clock implementation source code and another files.  
 Source Code & Documentations is Fully Made By : Andhika Rahadian 13218030
 
 ## Repository Files
